@@ -1,0 +1,12 @@
+-fsanitize=address 
+-fsanitize=leak 
+-fsanitize=undefined 
+-Wall 
+-Wextra 
+-Wpedantic 
+-Werror 
+-g
+-Iinclude
+-I/home/gtnoble/Software/BRL-CAD/brlcad/include/brlcad
+-I/home/gtnoble/Software/BRL-CAD/brlcad/include
+-L/home/gtnoble/Software/BRL-CAD/brlcad/lib
