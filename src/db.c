@@ -114,15 +114,15 @@ char *bzy_make_arb8(
 ) {
     Arena scratch = make_arena(10000000);
 
-    Points *poly1 = polygonalize(quad1, &scratch);
-    Points *poly2 = polygonalize(quad2, &scratch);
+    Points *poly1 = bzy_polygonalize(quad1, &scratch);
+    Points *poly2 = bzy_polygonalize(quad2, &scratch);
 
     char *name = new_object(basename);
     mk_arb8(
         db.db_file, 
         name,
-        flatten_vectors(
-            (Vector3D * const[]) {
+        bzy_flatten_vectors(
+            (Vector3D * const []) {
                 poly1->vertices[0],
                 poly1->vertices[1],
                 poly1->vertices[2],
@@ -166,8 +166,8 @@ char *bzy_make_drill(
 
     Vector3D *direction = bzy_vector_subn(end_center, start_center, &scratch);
 
-    Vector3D *start_clearance = hole_clearance(*direction, start_normal, radius, &scratch);
-    Vector3D *end_clearance = hole_clearance(*direction, end_normal, radius, &scratch);
+    Vector3D *start_clearance = bzy_hole_clearance(*direction, start_normal, radius, &scratch);
+    Vector3D *end_clearance = bzy_hole_clearance(*direction, end_normal, radius, &scratch);
 
     Vector3D *drill_start = bzy_vector_subn(start_center, *start_clearance, &scratch);
     Vector3D *drill_end = bzy_vector_addn(end_center, *end_clearance, &scratch);

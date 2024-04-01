@@ -1,3 +1,5 @@
+#define __POSIX_C_SOURCE 202403L
+
 #include <math.h>
 #include <stdalign.h>
 #include <stddef.h>
@@ -9,6 +11,10 @@
 
 #include "bzy_math.h"
 #include "arena.h"
+
+double bzy_degrees_to_radians(double degrees) {
+    return (degrees / 180.0) * M_PI;
+}
 
 Vector3D *new_vector(Arena *arena) {
     return arena_allocate_aligned(sizeof(Vector3D), alignof(Vector3D), arena);
@@ -23,14 +29,16 @@ void bzy_vector_copy(const Vector3D vector, Vector3D copy) {
     }
 }
 
-double *flatten_vectors(Vector3D * const vectors[], size_t num_vectors, Arena *arena) {
+double *bzy_flatten_vectors(Vector3D * const vectors[], size_t num_vectors, Arena *arena) {
     double *flattened = arena_allocate_aligned(
         sizeof(double) * 3 * num_vectors, alignof(double), arena
     );
 
+    size_t flattened_index = 0;
     for (size_t i = 0; i < num_vectors; i++) {
         for (size_t j = 0; j < 3; j++) {
-            flattened[3 * i + j] = *vectors[i][j];
+            flattened[flattened_index] = (*vectors[i])[j];
+            flattened_index++;
         }
     }
 
@@ -222,7 +230,7 @@ Points *new_points(size_t num_points, Arena *arena) {
     return points;
 }
 
-Points *vectors_to_points(const Vector3D vectors[], size_t num_vectors, Arena *arena) {
+Points *bzy_vectors_to_points(const Vector3D vectors[], size_t num_vectors, Arena *arena) {
     Points *points = new_points(num_vectors, arena);
     for (size_t i = 0; i < num_vectors; i++) {
         points->vertices[i] = duplicate_vector(vectors[i], arena);
@@ -230,7 +238,7 @@ Points *vectors_to_points(const Vector3D vectors[], size_t num_vectors, Arena *a
     return points;
 }
 
-DoubleArray *new_double_array(const double elements[], size_t num_elements, Arena *arena) {
+DoubleArray *bzy_new_double_array(const double elements[], size_t num_elements, Arena *arena) {
     DoubleArray *array = arena_allocate_aligned(
         sizeof(DoubleArray) + sizeof(double) * num_elements, 
         alignof(DoubleArray), 
@@ -245,7 +253,7 @@ DoubleArray *new_double_array(const double elements[], size_t num_elements, Aren
     return array;
 }
 
-Points *cartesian_product(
+Points *bzy_cartesian_product(
     const DoubleArray *x_values,
     const DoubleArray *y_values,
     const DoubleArray *z_values,
@@ -397,7 +405,7 @@ void apply_permutation(const Points *points, Points *permuted_points, size_t per
     }
 }
 
-Points *polygonalize(const Points *points, Arena *arena) {
+Points *bzy_polygonalize(const Points *points, Arena *arena) {
     assert(points != NULL);
     assert(arena != NULL);
 
@@ -459,7 +467,7 @@ Vector3D *bzy_polygon_normal(Points *polygon, Arena *arena) {
     return normal;
 }
 
-Vector3D *hole_clearance(const Vector3D hole_direction, const Vector3D plane_normal, double radius, Arena *arena) {
+Vector3D *bzy_hole_clearance(const Vector3D hole_direction, const Vector3D plane_normal, double radius, Arena *arena) {
     Arena scratch = make_arena(10000000);
 
     Vector3D *unit_normal = bzy_vector_normalizen(plane_normal, &scratch);
@@ -469,7 +477,7 @@ Vector3D *hole_clearance(const Vector3D hole_direction, const Vector3D plane_nor
     
     Vector3D *clearance = bzy_scalar_vector_multn(
         fabs( 
-            sqrt(1 - pow(direction_normal_component, 2) / direction_normal_component)
+            sqrt(1 - pow(direction_normal_component, 2)) / direction_normal_component
         ) *
         radius, 
         *unit_direction, 

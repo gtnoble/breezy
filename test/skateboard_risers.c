@@ -8,7 +8,7 @@ const double k_mounting_hole_spacing_width = BREEZY_INCHES_TO_MM(1.625);
 const double k_old_school_hole_spacing_length = BREEZY_INCHES_TO_MM(2.5);
 const double k_new_school_hole_spacing_length = BREEZY_INCHES_TO_MM(2.125);
 const double k_hole_diameter = BREEZY_INCHES_TO_MM(0.215);
-const double k_hole_to_edge_distance = 1.5;
+const double k_hole_to_edge_distance = 1.5 + k_hole_diameter / 2.0;
 
 const double k_base_width = k_mounting_hole_spacing_width + 2.0 * k_hole_to_edge_distance;
 const double k_base_length = k_old_school_hole_spacing_length + 2.0 * k_hole_to_edge_distance;
@@ -17,7 +17,7 @@ Points *base_points_to_top_points(Points *base_points, double wedge_angle, doubl
     Arena scratch = make_arena(10000000);
 
     Points *top_points = bzy_translate_points(
-        bzy_rotate_points(base_points, x_unit_vector, wedge_angle, &scratch), 
+        bzy_rotate_points(base_points, y_unit_vector, wedge_angle, &scratch), 
         *bzy_scalar_vector_multn(base_height, z_unit_vector, &scratch),
         arena
     );
@@ -30,24 +30,18 @@ Points *base_points_to_top_points(Points *base_points, double wedge_angle, doubl
 char *make_riser(double base_height, double wedge_angle, char *basename) {
     Arena scratch = make_arena(10000000);
 
-    Points *base_vertices = cartesian_product(
+    Points *base_vertices = bzy_cartesian_product(
         BREEZY_DOUBLE_ARRAY(&scratch, 0.0, k_base_length), 
         BREEZY_DOUBLE_ARRAY(&scratch, k_base_width / 2.0, -k_base_width / 2.0), 
         BREEZY_DOUBLE_ARRAY(&scratch, 0.0), 
         &scratch
     );
-    Points *top_vertices = bzy_translate_points(
-        bzy_rotate_points(base_vertices, x_unit_vector, wedge_angle, &scratch), 
-        *bzy_scalar_vector_multn(base_height, z_unit_vector, &scratch),
-        &scratch
-    );
-
-    top_vertices = base_points_to_top_points(base_vertices, wedge_angle, base_height, &scratch);
+    Points *top_vertices = base_points_to_top_points(base_vertices, wedge_angle, base_height, &scratch);
 
     char *body = bzy_make_arb8("body.s", base_vertices, top_vertices);
 
     Points *base_hole_centers = bzy_translate_points(
-        cartesian_product(
+        bzy_cartesian_product(
             BREEZY_DOUBLE_ARRAY(
                 &scratch, 
                 0.0, 
@@ -102,7 +96,7 @@ int main (int argc, char *argv[]) {
     assert(argc == 2);
     bzy_open_db(argv[1], "risers");
 
-    make_riser(10, 0.5, "riser.r");
+    make_riser(10, -0.5, "riser.r");
 
     bzy_close_db();
 }

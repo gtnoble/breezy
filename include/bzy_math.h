@@ -24,25 +24,27 @@ typedef struct {
 } Points;
 
 #define BREEZY_DOUBLE_ARRAY(arena, ...) \
-    new_double_array((double []) {__VA_ARGS__}, sizeof((double []) {__VA_ARGS__}) / sizeof(double), arena)
+    bzy_new_double_array((double []) {__VA_ARGS__}, sizeof((double []) {__VA_ARGS__}) / sizeof(double), arena)
 
 typedef struct {
     size_t num_elements;
     double elements[];
 } DoubleArray;
 
-DoubleArray *new_double_array(const double elements[], size_t num_elements, Arena *arena);
+double bzy_degrees_to_radians(double degrees);
+
+DoubleArray *bzy_new_double_array(const double elements[], size_t num_elements, Arena *arena);
 
 Vector3D *bzy_vector_normalizen(const Vector3D vector, Arena *arena);
 Vector3D *bzy_vector_addn(const Vector3D v1, const Vector3D v2, Arena *arena);
 Vector3D *bzy_vector_subn(const Vector3D v1, const Vector3D v2, Arena *arena);
 Vector3D *bzy_scalar_vector_multn(double scalar, const Vector3D vector, Arena *arena);
-Vector3D *hole_clearance(const Vector3D hole_direction, const Vector3D plane_normal, double radius, Arena *arena);
-double *flatten_vectors(Vector3D * const vectors[], size_t num_vectors, Arena *arena);
+Vector3D *bzy_hole_clearance(const Vector3D hole_direction, const Vector3D plane_normal, double radius, Arena *arena);
+double *bzy_flatten_vectors(Vector3D * const vectors[], size_t num_vectors, Arena *arena);
 
 
-Points *vectors_to_points(const Vector3D vectors[], size_t num_vectors, Arena *arena);
-Points *cartesian_product(
+Points *bzy_vectors_to_points(const Vector3D vectors[], size_t num_vectors, Arena *arena);
+Points *bzy_cartesian_product(
     const DoubleArray *x_values,
     const DoubleArray *y_values,
     const DoubleArray *z_values,
@@ -50,7 +52,7 @@ Points *cartesian_product(
 );
 Points *bzy_translate_points(const Points *points, const Vector3D direction, Arena *arena);
 Points *bzy_rotate_points(const Points *points, const Vector3D axis, double angle, Arena *arena);
-Points *polygonalize(const Points *points, Arena *arena);
+Points *bzy_polygonalize(const Points *points, Arena *arena);
 Vector3D *bzy_polygon_normal(Points *polygon, Arena *arena);
 
 #endif
