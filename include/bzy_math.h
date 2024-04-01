@@ -1,13 +1,13 @@
-#ifndef BREEZY_MATH
-#define BREEZY_MATH
+#ifndef BZY_MATH
+#define BZY_MATH
 
 #include <stddef.h>
 #include <stdlib.h>
 
 #include "arena.h"
 
-#define BREEZY_CONST_VECTOR(x, y, z) (const Vector3D) {x, y, z}
-#define BREEZY_INCHES_TO_MM(inches) inches * 25.4
+#define BZY_CONST_VECTOR(x, y, z) (const Vector3D) {x, y, z}
+#define BZY_INCHES_TO_MM(inches) inches * 25.4
 
 typedef double Vector3D[3];
 
@@ -23,18 +23,23 @@ typedef struct {
     Vector3D *vertices[];
 } Points;
 
-#define BREEZY_DOUBLE_ARRAY(arena, ...) \
-    bzy_new_double_array((double []) {__VA_ARGS__}, sizeof((double []) {__VA_ARGS__}) / sizeof(double), arena)
+#define BZY_DOUBLE_ARRAY(...) \
+    bzy_make_doubles( \
+        (double []) {__VA_ARGS__}, \
+        sizeof((double []) {__VA_ARGS__}) / sizeof(double) \
+    )
 
 typedef struct {
-    size_t num_elements;
-    double elements[];
-} DoubleArray;
+    size_t length;
+    double *elements;
+} BzyDoubles;
 
 double bzy_degrees_to_radians(double degrees);
 
-DoubleArray *bzy_new_double_array(const double elements[], size_t num_elements, Arena *arena);
+BzyDoubles *bzy_new_doubles(size_t num_elements, Arena *arena);
+BzyDoubles bzy_make_doubles(double elements[], size_t num_elements);
 
+double bzy_vector_length(const Vector3D vector);
 Vector3D *bzy_vector_normalizen(const Vector3D vector, Arena *arena);
 Vector3D *bzy_vector_addn(const Vector3D v1, const Vector3D v2, Arena *arena);
 Vector3D *bzy_vector_subn(const Vector3D v1, const Vector3D v2, Arena *arena);
@@ -45,14 +50,14 @@ double *bzy_flatten_vectors(Vector3D * const vectors[], size_t num_vectors, Aren
 
 Points *bzy_vectors_to_points(const Vector3D vectors[], size_t num_vectors, Arena *arena);
 Points *bzy_cartesian_product(
-    const DoubleArray *x_values,
-    const DoubleArray *y_values,
-    const DoubleArray *z_values,
+    const BzyDoubles x_values,
+    const BzyDoubles y_values,
+    const BzyDoubles z_values,
     Arena *arena
 );
 Points *bzy_translate_points(const Points *points, const Vector3D direction, Arena *arena);
 Points *bzy_rotate_points(const Points *points, const Vector3D axis, double angle, Arena *arena);
 Points *bzy_polygonalize(const Points *points, Arena *arena);
-Vector3D *bzy_polygon_normal(Points *polygon, Arena *arena);
+Vector3D *bzy_polygon_normal(const Points *polygon, Arena *arena);
 
 #endif

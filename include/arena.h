@@ -1,6 +1,6 @@
 
-#ifndef BREEZY_ARENA
-#define BREEZY_ARENA
+#ifndef BZY_ARENA
+#define BZY_ARENA
 
 #include <stdlib.h>
 

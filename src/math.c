@@ -238,47 +238,66 @@ Points *bzy_vectors_to_points(const Vector3D vectors[], size_t num_vectors, Aren
     return points;
 }
 
-DoubleArray *bzy_new_double_array(const double elements[], size_t num_elements, Arena *arena) {
-    DoubleArray *array = arena_allocate_aligned(
-        sizeof(DoubleArray) + sizeof(double) * num_elements, 
-        alignof(DoubleArray), 
+BzyDoubles *bzy_new_doubles(size_t num_elements, Arena *arena) {
+    assert(arena != NULL);
+    
+    BzyDoubles *array = arena_allocate_aligned(
+        sizeof(BzyDoubles), 
+        alignof(BzyDoubles), 
         arena
     );
 
-    array->num_elements = num_elements;
-    for (size_t i = 0; i < num_elements; i++) {
-        array->elements[i] = elements[i];
-    }
+    array->length = num_elements;
+
+    array->elements = arena_allocate_aligned(
+        sizeof(double) * num_elements, 
+        alignof(double), 
+        arena
+    );
 
     return array;
 }
 
+BzyDoubles bzy_make_doubles(double elements[], size_t num_elements) {
+    BzyDoubles array = {
+        .elements = elements,
+        .length = num_elements
+    };
+    return array;
+}
+
+double *bzy_doubles_get(size_t index, BzyDoubles doubles) {
+    assert(index < doubles.length);
+    return &doubles.elements[index];
+}
+
 Points *bzy_cartesian_product(
-    const DoubleArray *x_values,
-    const DoubleArray *y_values,
-    const DoubleArray *z_values,
+    const BzyDoubles x_values,
+    const BzyDoubles y_values,
+    const BzyDoubles z_values,
     Arena *arena
 ) {
-    assert(x_values->num_elements > 0);
-    assert(y_values->num_elements > 0);
-    assert(z_values->num_elements > 0);
+    assert(x_values.length > 0);
+    assert(y_values.length > 0);
+    assert(z_values.length > 0);
+    assert(arena != NULL);
 
-    size_t num_points = x_values->num_elements * y_values->num_elements * z_values->num_elements;
+    size_t num_points = x_values.length * y_values.length * z_values.length;
     Points *product = new_points(
         num_points,
         arena
     );
 
     size_t index = 0;
-    for (size_t i = 0; i < x_values->num_elements; i++) {
-        for (size_t j = 0; j < y_values->num_elements; j++) {
-            for (size_t k = 0; k < z_values->num_elements; k++) {
+    for (size_t i = 0; i < x_values.length; i++) {
+        for (size_t j = 0; j < y_values.length; j++) {
+            for (size_t k = 0; k < z_values.length; k++) {
                 assert(index < num_points);
                 product->vertices[index] = duplicate_vector(
                     (Vector3D) {
-                        x_values->elements[i], 
-                        y_values->elements[j], 
-                        z_values->elements[k]
+                        *bzy_doubles_get(i, x_values),
+                        *bzy_doubles_get(j, y_values),
+                        *bzy_doubles_get(k, z_values)
                     }, 
                     arena
                 );
@@ -450,17 +469,26 @@ Points *bzy_polygonalize(const Points *points, Arena *arena) {
     return shortest_path;
 }
 
-Vector3D *bzy_polygon_normal(Points *polygon, Arena *arena) {
+Vector3D *bzy_polygon_normal(const Points *polygon, Arena *arena) {
+    assert(polygon != NULL);
+    assert(arena != NULL);
 
     Arena scratch = make_arena(1000000);
 
+    Vector3D *v1 = bzy_vector_subn(*polygon->vertices[1], *polygon->vertices[0], &scratch);
+    assert(bzy_vector_length(*v1) > 0);
+
+    Vector3D *v2 = bzy_vector_subn(*polygon->vertices[2], *polygon->vertices[0], &scratch);
+    assert(bzy_vector_length(*v2) > 0);
+
     Vector3D *normal = bzy_vector_normalizen(
         *bzy_vector_crossn(
-            *bzy_vector_subn(*polygon->vertices[1], *polygon->vertices[0], &scratch), 
-            *bzy_vector_subn(*polygon->vertices[2], *polygon->vertices[0], &scratch), 
+            *v1,
+            *v2,
             &scratch), 
         arena
     );
+    assert(bzy_vector_length(*normal) > 0);
 
     free_arena(&scratch);
 
@@ -469,6 +497,10 @@ Vector3D *bzy_polygon_normal(Points *polygon, Arena *arena) {
 
 Vector3D *bzy_hole_clearance(const Vector3D hole_direction, const Vector3D plane_normal, double radius, Arena *arena) {
     Arena scratch = make_arena(10000000);
+
+    assert(radius >= 0);
+    assert(bzy_vector_length(hole_direction) > 0.0);
+    assert(bzy_vector_length(plane_normal) > 0.0);
 
     Vector3D *unit_normal = bzy_vector_normalizen(plane_normal, &scratch);
     Vector3D *unit_direction = bzy_vector_normalizen(hole_direction, &scratch);

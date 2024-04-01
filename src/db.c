@@ -1,4 +1,5 @@
 #include <stdalign.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -14,7 +15,7 @@
 #include "arena.h"
 #include "bzy_math.h"
 
-static SlickDb db;
+static BzyDb db;
 
 void bzy_open_db(const char *filepath, const char *database_title) {
     assert(db.db_file == NULL);
@@ -37,7 +38,33 @@ void bzy_close_db(void) {
     db.db_file = NULL;
 }
 
-SlickObject *search_base_name(const char *basename, SlickObject *root_object) {
+BzyStrings *bzy_new_strings(size_t num_strings, Arena *arena) {
+    BzyStrings *strings = arena_allocate_aligned(
+        sizeof(BzyStrings), 
+        alignof(BzyStrings), 
+        arena
+    );
+    strings->strings = arena_allocate_aligned(sizeof(char *) * num_strings, alignof(char *), arena);
+    strings->num_elements = num_strings;
+    return strings;
+}
+
+BzyStrings bzy_make_strings(char *raw_strings[], size_t num_strings) {
+    BzyStrings strings = {
+        .strings = raw_strings,
+        .num_elements = num_strings
+    };
+    return strings;
+}
+
+char **bzy_strings_get(size_t index, BzyStrings *strings) {
+    assert(strings != NULL);
+    assert(index < strings->num_elements);
+
+    return &strings->strings[index];
+}
+
+BzyObject *search_base_name(const char *basename, BzyObject *root_object) {
     if (root_object == NULL) {
         return NULL;
     }
@@ -49,9 +76,9 @@ SlickObject *search_base_name(const char *basename, SlickObject *root_object) {
     }
 }
 
-SlickObject *push_new_object(const char *basename) {
-    SlickObject *new_object = arena_allocate_aligned(
-        sizeof(SlickObject), alignof(SlickObject),&db.arena
+BzyObject *push_new_object(const char *basename) {
+    BzyObject *new_object = arena_allocate_aligned(
+        sizeof(BzyObject), alignof(BzyObject),&db.arena
     );
     new_object->basename = arena_duplicate_string(basename, &db.arena);
     new_object->object_count = 1;
@@ -67,14 +94,14 @@ SlickObject *push_new_object(const char *basename) {
     return new_object;
 }
 
-char *evaluate_name(SlickObject object, Arena *arena) {
+char *evaluate_name(BzyObject object, Arena *arena) {
     return arena_sprintf(arena, "%s%d", object.basename, object.object_count);
 }
 
 char *new_object(const char *basename) {
-    SlickObject *matched_object = search_base_name(basename, db.first_object);
+    BzyObject *matched_object = search_base_name(basename, db.first_object);
 
-    SlickObject *object;
+    BzyObject *object;
     if (matched_object == NULL) {
         object = push_new_object(basename);
     }
@@ -160,11 +187,16 @@ char *bzy_make_drill(
     const Vector3D end_center,
     double diameter
 ) {
+    assert(bzy_vector_length(start_normal) > 0.0);
+    assert(bzy_vector_length(end_normal) > 0.0);
+    assert(diameter > 0);
+
     double radius = diameter / 2.0;
 
     Arena scratch = make_arena(10000000);
 
     Vector3D *direction = bzy_vector_subn(end_center, start_center, &scratch);
+    assert(bzy_vector_length(*direction) > 0);
 
     Vector3D *start_clearance = bzy_hole_clearance(*direction, start_normal, radius, &scratch);
     Vector3D *end_clearance = bzy_hole_clearance(*direction, end_normal, radius, &scratch);
@@ -172,6 +204,7 @@ char *bzy_make_drill(
     Vector3D *drill_start = bzy_vector_subn(start_center, *start_clearance, &scratch);
     Vector3D *drill_end = bzy_vector_addn(end_center, *end_clearance, &scratch);
     Vector3D *drill_direction = bzy_vector_subn(*drill_end, *drill_start, &scratch);
+    assert(bzy_vector_length(*drill_direction) > 0.0);
 
     char *drill = bzy_make_rcc(
         basename, 
@@ -189,7 +222,7 @@ char *bzy_make_drill(
 //@todo make names a specified-length array
 char *bzy_make_combination(
     const char *basename, 
-    const char *names[], 
+    BzyStrings names,
     db_op_t operation, 
     bool is_region
 ) {
@@ -198,9 +231,9 @@ char *bzy_make_combination(
     struct wmember wm_hd;
     BU_LIST_INIT(&wm_hd.l);
 
-    for (size_t i = 0; names[i] != NULL; i++) {
+    for (size_t i = 0; i < names.num_elements; i++) {
         mk_addmember(
-            names[i],
+            *bzy_strings_get(i, &names),
             &wm_hd.l, 
             NULL, 
             (i == 0 ? WMOP_UNION : operation)
@@ -220,11 +253,11 @@ char *bzy_make_combination(
     return name;
 }
 
-char *bzy_make_union(const char *basename, const char *names[], bool is_region) {
+char *bzy_make_union(const char *basename, BzyStrings names, bool is_region) {
     return bzy_make_combination(basename, names, WMOP_UNION, is_region);
 }
 
-char *bzy_make_difference(const char *basename, const char *names[], bool is_region) {
+char *bzy_make_difference(const char *basename, BzyStrings names, bool is_region) {
     return bzy_make_combination(basename, names, WMOP_SUBTRACT, is_region);
 }
 

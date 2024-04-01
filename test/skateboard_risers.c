@@ -4,10 +4,10 @@
 #include "db.h"
 #include "bzy_math.h"
 
-const double k_mounting_hole_spacing_width = BREEZY_INCHES_TO_MM(1.625);
-const double k_old_school_hole_spacing_length = BREEZY_INCHES_TO_MM(2.5);
-const double k_new_school_hole_spacing_length = BREEZY_INCHES_TO_MM(2.125);
-const double k_hole_diameter = BREEZY_INCHES_TO_MM(0.215);
+const double k_mounting_hole_spacing_width = BZY_INCHES_TO_MM(1.625);
+const double k_old_school_hole_spacing_length = BZY_INCHES_TO_MM(2.5);
+const double k_new_school_hole_spacing_length = BZY_INCHES_TO_MM(2.125);
+const double k_hole_diameter = BZY_INCHES_TO_MM(0.215);
 const double k_hole_to_edge_distance = 1.5 + k_hole_diameter / 2.0;
 
 const double k_base_width = k_mounting_hole_spacing_width + 2.0 * k_hole_to_edge_distance;
@@ -31,9 +31,9 @@ char *make_riser(double base_height, double wedge_angle, char *basename) {
     Arena scratch = make_arena(10000000);
 
     Points *base_vertices = bzy_cartesian_product(
-        BREEZY_DOUBLE_ARRAY(&scratch, 0.0, k_base_length), 
-        BREEZY_DOUBLE_ARRAY(&scratch, k_base_width / 2.0, -k_base_width / 2.0), 
-        BREEZY_DOUBLE_ARRAY(&scratch, 0.0), 
+        BZY_DOUBLE_ARRAY(0.0, k_base_length), 
+        BZY_DOUBLE_ARRAY(k_base_width / 2.0, -k_base_width / 2.0), 
+        BZY_DOUBLE_ARRAY(0.0), 
         &scratch
     );
     Points *top_vertices = base_points_to_top_points(base_vertices, wedge_angle, base_height, &scratch);
@@ -42,18 +42,16 @@ char *make_riser(double base_height, double wedge_angle, char *basename) {
 
     Points *base_hole_centers = bzy_translate_points(
         bzy_cartesian_product(
-            BREEZY_DOUBLE_ARRAY(
-                &scratch, 
+            BZY_DOUBLE_ARRAY(
                 0.0, 
                 k_old_school_hole_spacing_length, 
                 k_new_school_hole_spacing_length
             ), 
-            BREEZY_DOUBLE_ARRAY(
-                &scratch,
+            BZY_DOUBLE_ARRAY(
                 k_mounting_hole_spacing_width / 2.0, 
                 -k_mounting_hole_spacing_width / 2.0
             ) , 
-            BREEZY_DOUBLE_ARRAY(&scratch, 0.0), 
+            BZY_DOUBLE_ARRAY(0.0), 
             &scratch
         ), 
         *bzy_scalar_vector_multn(
@@ -68,12 +66,11 @@ char *make_riser(double base_height, double wedge_angle, char *basename) {
         base_hole_centers, wedge_angle, base_height, &scratch
     );
 
-    const char *drills[base_hole_centers->num_vertices + 1];
-    drills[base_hole_centers->num_vertices] = NULL;
+    BzyStrings *drills = bzy_new_strings(base_hole_centers->num_vertices, &scratch);
     Vector3D *base_normal = bzy_polygon_normal(base_vertices, &scratch);
     Vector3D *top_normal = bzy_polygon_normal(top_vertices, &scratch);
     for (size_t i = 0; i < base_hole_centers->num_vertices; i++) {
-        drills[i] = bzy_make_drill(
+        *bzy_strings_get(i, drills) = bzy_make_drill(
             "bolt_drill.s", 
             *base_normal, *base_hole_centers->vertices[i], 
             *top_normal, *top_hole_centers->vertices[i], 
@@ -82,10 +79,14 @@ char *make_riser(double base_height, double wedge_angle, char *basename) {
     }
 
     char *drill_set = bzy_make_union(
-        "drills.c", drills, false
+        "drills.c", *drills, false
     );
 
-    char *riser = BREEZY_MAKE_DIFFERENCE(basename, true, body, drill_set);
+    char *riser = bzy_make_difference(
+        basename, 
+        BZY_MAKE_STRINGS(body, drill_set), 
+        true
+    );
 
     free_arena(&scratch);
 
